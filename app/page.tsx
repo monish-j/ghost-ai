@@ -270,7 +270,7 @@ export default function Home() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-zinc-300 leading-relaxed text-xs">
-                    This card uses tighter padding (`size="sm"`), making it perfect for dashboard side panels, data feeds, settings bars, and sidebar content.
+                    This card uses tighter padding (`size=&quot;sm&quot;`), making it perfect for dashboard side panels, data feeds, settings bars, and sidebar content.
                   </p>
                 </CardContent>
                 <CardFooter className="border-t border-zinc-800/50 pt-3">

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { EditorNavbar } from "@/components/editor/editor-navbar";
 import { ProjectSidebar } from "@/components/editor/project-sidebar";
-import { Terminal, Sliders, Play, Settings } from "lucide-react";
+import { Terminal, Sliders, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function EditorPage() {
