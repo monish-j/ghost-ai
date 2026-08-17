@@ -3,15 +3,29 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { X, Plus, FolderOpen, Share2 } from "lucide-react";
+import { X, Plus, FolderOpen, Share2, Folder, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Project } from "@/lib/hooks/use-project-dialogs";
 
 interface ProjectSidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  myProjects: Project[];
+  sharedProjects: Project[];
+  onOpenCreate: () => void;
+  onOpenRename: (project: Project) => void;
+  onOpenDelete: (project: Project) => void;
 }
 
-export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
+export function ProjectSidebar({
+  isOpen,
+  onClose,
+  myProjects,
+  sharedProjects,
+  onOpenCreate,
+  onOpenRename,
+  onOpenDelete,
+}: ProjectSidebarProps) {
   return (
     <>
       {/* Sidebar Container */}
@@ -52,38 +66,112 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
               </TabsTrigger>
             </TabsList>
 
-            {/* Tab 1: My Projects Empty State */}
+            {/* Tab 1: My Projects */}
             <TabsContent value="my-projects" className="flex-1 flex flex-col focus-visible:outline-none">
-              <div className="flex-1 flex flex-col items-center justify-center border border-dashed border-zinc-800 rounded-lg p-6 text-center py-16 gap-3">
-                <div className="p-3 bg-zinc-900/50 rounded-full border border-zinc-800/60 text-purple-400">
-                  <FolderOpen className="size-6" />
+              {myProjects.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center border border-dashed border-zinc-800 rounded-lg p-6 text-center py-16 gap-3">
+                  <div className="p-3 bg-zinc-900/50 rounded-full border border-zinc-800/60 text-purple-400">
+                    <FolderOpen className="size-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-zinc-300">
+                      No projects found
+                    </p>
+                    <p className="text-[11px] text-zinc-500 max-w-[180px] mx-auto">
+                      Create a new project from the button below to get started.
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold text-zinc-300">
-                    No projects found
-                  </p>
-                  <p className="text-[11px] text-zinc-500 max-w-[180px] mx-auto">
-                    Create a new project from the button below to get started.
-                  </p>
+              ) : (
+                <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+                  {myProjects.map((project) => (
+                    <div
+                      key={project.id}
+                      className="group flex items-center justify-between p-2.5 rounded-lg border border-zinc-800/20 bg-zinc-900/10 hover:border-zinc-800/60 hover:bg-zinc-900/40 transition-all duration-200"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2 rounded-md bg-purple-500/5 border border-purple-500/10 text-purple-400 group-hover:bg-purple-500/10 group-hover:border-purple-500/20 transition-colors">
+                          <Folder className="size-4.5" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs font-medium text-zinc-200 truncate group-hover:text-zinc-100 transition-colors">
+                            {project.name}
+                          </span>
+                          <span className="text-[10px] text-zinc-500 font-mono truncate">
+                            /{project.slug}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Project actions (only if owned) */}
+                      {project.isOwner && (
+                        <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-150">
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() => onOpenRename(project)}
+                            className="text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                            title={`Rename ${project.name}`}
+                          >
+                            <Pencil className="size-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() => onOpenDelete(project)}
+                            className="text-zinc-400 hover:text-red-400 hover:bg-red-500/10"
+                            title={`Delete ${project.name}`}
+                          >
+                            <Trash2 className="size-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              </div>
+              )}
             </TabsContent>
 
-            {/* Tab 2: Shared Projects Empty State */}
+            {/* Tab 2: Shared Projects */}
             <TabsContent value="shared" className="flex-1 flex flex-col focus-visible:outline-none">
-              <div className="flex-1 flex flex-col items-center justify-center border border-dashed border-zinc-800 rounded-lg p-6 text-center py-16 gap-3">
-                <div className="p-3 bg-zinc-900/50 rounded-full border border-zinc-800/60 text-purple-400">
-                  <Share2 className="size-6" />
+              {sharedProjects.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center border border-dashed border-zinc-800 rounded-lg p-6 text-center py-16 gap-3">
+                  <div className="p-3 bg-zinc-900/50 rounded-full border border-zinc-800/60 text-purple-400">
+                    <Share2 className="size-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-zinc-300">
+                      No shared projects
+                    </p>
+                    <p className="text-[11px] text-zinc-500 max-w-[180px] mx-auto">
+                      Projects shared by collaborators will appear in this space.
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold text-zinc-300">
-                    No shared projects
-                  </p>
-                  <p className="text-[11px] text-zinc-500 max-w-[180px] mx-auto">
-                    Projects shared by collaborators will appear in this space.
-                  </p>
+              ) : (
+                <div className="flex-1 overflow-y-auto space-y-1.5 pr-1">
+                  {sharedProjects.map((project) => (
+                    <div
+                      key={project.id}
+                      className="group flex items-center justify-between p-2.5 rounded-lg border border-zinc-800/20 bg-zinc-900/10 hover:border-zinc-800/60 hover:bg-zinc-900/40 transition-all duration-200"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2 rounded-md bg-purple-500/5 border border-purple-500/10 text-purple-400 group-hover:bg-purple-500/10 group-hover:border-purple-500/20 transition-colors">
+                          <Folder className="size-4.5" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs font-medium text-zinc-200 truncate group-hover:text-zinc-100 transition-colors">
+                            {project.name}
+                          </span>
+                          <span className="text-[10px] text-zinc-500 font-mono truncate">
+                            /{project.slug}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>
@@ -92,6 +180,7 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
         <div className="p-4 border-t border-zinc-800/80 bg-zinc-950/60">
           <Button
             variant="default"
+            onClick={onOpenCreate}
             className="w-full bg-purple-600 hover:bg-purple-500 text-white border border-purple-700 gap-2 text-xs"
           >
             <Plus className="size-4" />
@@ -100,10 +189,10 @@ export function ProjectSidebar({ isOpen, onClose }: ProjectSidebarProps) {
         </div>
       </aside>
 
-      {/* Backdrop (Only overlay, non-blocking click-away handler to close sidebar if clicking canvas) */}
+      {/* Backdrop scrim (tapping outside closes it; visible background on mobile, softer overlay on md screens) */}
       {isOpen && (
         <div
-          className="fixed inset-0 top-14 z-30 bg-black/20 backdrop-blur-xs transition-opacity duration-300"
+          className="fixed inset-0 top-14 z-30 bg-black/60 md:bg-black/20 backdrop-blur-xs md:backdrop-blur-none transition-opacity duration-300"
           onClick={onClose}
         />
       )}
