@@ -44,3 +44,9 @@ next-env.d.ts
 /.clerk/
 
 /app/generated/prisma
+
+# local agent and ide config
+/.agents/
+/.claude/
+/.windsurf/
+/skills-lock.json
