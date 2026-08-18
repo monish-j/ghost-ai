@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { X, Plus, FolderOpen, Share2, Folder, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Project } from "@/lib/hooks/use-project-dialogs";
+import { Project } from "@/lib/hooks/use-project-actions";
 
 interface ProjectSidebarProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ interface ProjectSidebarProps {
   onOpenCreate: () => void;
   onOpenRename: (project: Project) => void;
   onOpenDelete: (project: Project) => void;
+  activeProjectId?: string;
 }
 
 export function ProjectSidebar({
@@ -25,6 +27,7 @@ export function ProjectSidebar({
   onOpenCreate,
   onOpenRename,
   onOpenDelete,
+  activeProjectId,
 }: ProjectSidebarProps) {
   return (
     <>
@@ -87,21 +90,37 @@ export function ProjectSidebar({
                   {myProjects.map((project) => (
                     <div
                       key={project.id}
-                      className="group flex items-center justify-between p-2.5 rounded-lg border border-zinc-800/20 bg-zinc-900/10 hover:border-zinc-800/60 hover:bg-zinc-900/40 transition-all duration-200"
+                      className={cn(
+                        "group flex items-center justify-between p-2.5 rounded-lg border transition-all duration-200",
+                        project.id === activeProjectId
+                          ? "border-purple-500/50 bg-purple-500/10"
+                          : "border-zinc-800/20 bg-zinc-900/10 hover:border-zinc-800/60 hover:bg-zinc-900/40"
+                      )}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="p-2 rounded-md bg-purple-500/5 border border-purple-500/10 text-purple-400 group-hover:bg-purple-500/10 group-hover:border-purple-500/20 transition-colors">
+                      <Link
+                        href={`/editor/${project.id}`}
+                        className="flex-1 flex items-center gap-3 min-w-0 cursor-pointer"
+                      >
+                        <div className={cn(
+                          "p-2 rounded-md transition-colors",
+                          project.id === activeProjectId
+                            ? "bg-purple-500/20 border border-purple-500/30 text-purple-300"
+                            : "bg-purple-500/5 border border-purple-500/10 text-purple-400 group-hover:bg-purple-500/10 group-hover:border-purple-500/20"
+                        )}>
                           <Folder className="size-4.5" />
                         </div>
                         <div className="flex flex-col min-w-0">
-                          <span className="text-xs font-medium text-zinc-200 truncate group-hover:text-zinc-100 transition-colors">
+                          <span className={cn(
+                            "text-xs font-medium truncate transition-colors",
+                            project.id === activeProjectId ? "text-purple-300" : "text-zinc-200 group-hover:text-zinc-100"
+                          )}>
                             {project.name}
                           </span>
                           <span className="text-[10px] text-zinc-500 font-mono truncate">
                             /{project.slug}
                           </span>
                         </div>
-                      </div>
+                      </Link>
 
                       {/* Project actions (only if owned) */}
                       {project.isOwner && (
@@ -109,7 +128,10 @@ export function ProjectSidebar({
                           <Button
                             variant="ghost"
                             size="icon-xs"
-                            onClick={() => onOpenRename(project)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              onOpenRename(project);
+                            }}
                             className="text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
                             title={`Rename ${project.name}`}
                           >
@@ -118,7 +140,10 @@ export function ProjectSidebar({
                           <Button
                             variant="ghost"
                             size="icon-xs"
-                            onClick={() => onOpenDelete(project)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              onOpenDelete(project);
+                            }}
                             className="text-zinc-400 hover:text-red-400 hover:bg-red-500/10"
                             title={`Delete ${project.name}`}
                           >
@@ -153,21 +178,37 @@ export function ProjectSidebar({
                   {sharedProjects.map((project) => (
                     <div
                       key={project.id}
-                      className="group flex items-center justify-between p-2.5 rounded-lg border border-zinc-800/20 bg-zinc-900/10 hover:border-zinc-800/60 hover:bg-zinc-900/40 transition-all duration-200"
+                      className={cn(
+                        "group flex items-center justify-between p-2.5 rounded-lg border transition-all duration-200",
+                        project.id === activeProjectId
+                          ? "border-purple-500/50 bg-purple-500/10"
+                          : "border-zinc-800/20 bg-zinc-900/10 hover:border-zinc-800/60 hover:bg-zinc-900/40"
+                      )}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="p-2 rounded-md bg-purple-500/5 border border-purple-500/10 text-purple-400 group-hover:bg-purple-500/10 group-hover:border-purple-500/20 transition-colors">
+                      <Link
+                        href={`/editor/${project.id}`}
+                        className="flex-1 flex items-center gap-3 min-w-0 cursor-pointer"
+                      >
+                        <div className={cn(
+                          "p-2 rounded-md transition-colors",
+                          project.id === activeProjectId
+                            ? "bg-purple-500/20 border border-purple-500/30 text-purple-300"
+                            : "bg-purple-500/5 border border-purple-500/10 text-purple-400 group-hover:bg-purple-500/10 group-hover:border-purple-500/20"
+                        )}>
                           <Folder className="size-4.5" />
                         </div>
                         <div className="flex flex-col min-w-0">
-                          <span className="text-xs font-medium text-zinc-200 truncate group-hover:text-zinc-100 transition-colors">
+                          <span className={cn(
+                            "text-xs font-medium truncate transition-colors",
+                            project.id === activeProjectId ? "text-purple-300" : "text-zinc-200 group-hover:text-zinc-100"
+                          )}>
                             {project.name}
                           </span>
                           <span className="text-[10px] text-zinc-500 font-mono truncate">
                             /{project.slug}
                           </span>
                         </div>
-                      </div>
+                      </Link>
                     </div>
                   ))}
                 </div>
