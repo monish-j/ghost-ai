@@ -20,6 +20,8 @@ change.
 - Prisma Schema And Data Layer (05-prisma.md)
 - Project REST API endpoints (06-project-apis.md)
 - Wiring editor home UI to the real project APIs (07-wire-editor-home.md)
+- Workspace shell layout and server-side access checks (08-editor-workspace-shell.md)
+- Project share dialog and collaborator management (09-share-dialog.md)
 
 ## In Progress
 
@@ -27,7 +29,7 @@ change.
 
 ## Next Up
 
-- Build the `/editor/[roomId]` workspace shell with server-side access checks (08-editor-workspace-shell.md)
+- Set up Liveblocks real-time infrastructure (10-liveblocks-setup.md)
 
 ## Open Questions
 
@@ -40,6 +42,8 @@ change.
 - Designed `useProjectDialogs` hook for centralized, client-side dialog states, input forms, and live slug parsing without server roundtrips.
 - Implemented database client cached singleton (`lib/prisma.ts`) that dynamically branches on the connection string prefix, switching between Prisma Accelerate (for edge/serverless caching compatibility) and `@prisma/adapter-pg` driver adapter.
 - Converted `app/editor/page.tsx` into a Server Component that handles initial authentication checks and fetches project lists directly via a database helper `lib/projects.ts`, avoiding client-side layout shifts and initial fetching delays.
+- Isolated server-side security lookup helpers (`lib/project-access.ts`) to extract active Clerk identities and validate database room ownership/collaborator list, keeping route page layouts lean and testable.
+- Integrated `@clerk/nextjs/server` `createClerkClient` in Route Handlers to dynamically retrieve collaborator avatars and full display names via parallelized, batch-filtering searches on user emails.
 
 ## Session Notes
 
@@ -51,6 +55,8 @@ change.
 - Prisma Schema and Data Layer (05-prisma.md) completed: created `prisma/models/project.prisma` containing the `Project` (indexes on `ownerId`/`createdAt`) and `ProjectCollaborator` (cascade delete relation to `Project`, unique constraint on `projectId`/`email`, indexes on `email` and `projectId`/`createdAt`) models. Built cached Prisma client singleton at `lib/prisma.ts` with branching for Accelerate vs adapter-pg. Ran first migration `init_project_models` successfully, generated Prisma client to `app/generated/prisma`, and verified that Next.js builds clean.
 - Project REST API endpoints (06-project-apis.md) completed: Implemented CRUD REST API endpoints for projects at `GET /api/projects`, `POST /api/projects`, `PATCH /api/projects/[projectId]`, and `DELETE /api/projects/[projectId]` with authenticated Clerk user ID as `ownerId`. Added security validation returning 401 for unauthenticated calls and 403 for non-owner mutations. Defaulted missing names to `Untitled Project` and awaited params for dynamic route segment compatibility in Next.js 15/16. Verified that `npm run build` compiled clean.
 - Wiring editor home UI (07-wire-editor-home.md) completed: Converted `app/editor/page.tsx` into a Server Component. Designed `useProjectActions` hook in `lib/hooks/use-project-actions.ts` that manages creation with unique 6-character suffix room IDs, project renaming, and deletion (handling workspace redirect and list refreshes). Created database helper `lib/projects.ts` to fetch owned and shared projects server-side. Created client-side interactive layout `components/editor/editor-home-client.tsx`. Updated `project-sidebar.tsx` to wrap items in next/link and support active highlights. Verification build passed successfully.
+- Workspace Shell Setup (08-editor-workspace-shell.md) completed: Created server-side access helpers (`lib/project-access.ts`) supporting Clerk auth identity resolution and database-driven ownership/collaboration checks. Built custom glassmorphic `WorkspaceNavbar` (showing active project name, share buttons, AI side-panel toggles) and `EditorWorkspaceClient` wrapper managing full-viewport grids, left `ProjectSidebar` active highlighting, right AI Chat sidebar transitions, and floating project action modals. Created dynamic Server Component route `/editor/[roomId]/page.tsx` and custom `AccessDenied` view for unauthorized access or non-existent rooms. Next.js build and TypeScript validation checked successfully.
+- Project Share Dialog (09-share-dialog.md) completed: Implemented a robust `/api/projects/[projectId]/collaborators` REST endpoint supporting GET (listing with Clerk batch data enrichment), POST (invitation by email with self-invite/duplicate safety validation), and DELETE (removal by ID or email). Enforced project ownership checking on invite and delete requests server-side. Created a beautiful, fully functional `<ShareDialog />` modal that allows owners to manage access, displays read-only collaborator directories to guests, and implements link copying with immediate checkout confirmation. Updated `WorkspaceNavbar`, `EditorWorkspaceClient`, and `/editor/[roomId]/page.tsx` routes. Project build checks compiled completely clean.
 
 
 
