@@ -22,6 +22,9 @@ change.
 - Wiring editor home UI to the real project APIs (07-wire-editor-home.md)
 - Workspace shell layout and server-side access checks (08-editor-workspace-shell.md)
 - Project share dialog and collaborator management (09-share-dialog.md)
+- Set up Liveblocks real-time infrastructure (10-liveblocks-setup.md)
+- Implement base collaborative canvas (11-base-canvas.md)
+- Create shape panel (12-shape-panel.md)
 
 ## In Progress
 
@@ -29,7 +32,7 @@ change.
 
 ## Next Up
 
-- Set up Liveblocks real-time infrastructure (10-liveblocks-setup.md)
+- Node shape rendering (13-node-shape.md)
 
 ## Open Questions
 
@@ -44,6 +47,8 @@ change.
 - Converted `app/editor/page.tsx` into a Server Component that handles initial authentication checks and fetches project lists directly via a database helper `lib/projects.ts`, avoiding client-side layout shifts and initial fetching delays.
 - Isolated server-side security lookup helpers (`lib/project-access.ts`) to extract active Clerk identities and validate database room ownership/collaborator list, keeping route page layouts lean and testable.
 - Integrated `@clerk/nextjs/server` `createClerkClient` in Route Handlers to dynamically retrieve collaborator avatars and full display names via parallelized, batch-filtering searches on user emails.
+- Configured Liveblocks server client with a fallback mock secret during module evaluation to prevent static analysis crashes in Next.js build tasks.
+- Adopted Liveblocks Access Tokens (prepared server-side via `liveblocks.prepareSession`) dynamically validated against database ownership and collaborator memberships, utilizing PostgreSQL as the access authority and avoiding permission syncing overhead.
 
 ## Session Notes
 
@@ -57,6 +62,6 @@ change.
 - Wiring editor home UI (07-wire-editor-home.md) completed: Converted `app/editor/page.tsx` into a Server Component. Designed `useProjectActions` hook in `lib/hooks/use-project-actions.ts` that manages creation with unique 6-character suffix room IDs, project renaming, and deletion (handling workspace redirect and list refreshes). Created database helper `lib/projects.ts` to fetch owned and shared projects server-side. Created client-side interactive layout `components/editor/editor-home-client.tsx`. Updated `project-sidebar.tsx` to wrap items in next/link and support active highlights. Verification build passed successfully.
 - Workspace Shell Setup (08-editor-workspace-shell.md) completed: Created server-side access helpers (`lib/project-access.ts`) supporting Clerk auth identity resolution and database-driven ownership/collaboration checks. Built custom glassmorphic `WorkspaceNavbar` (showing active project name, share buttons, AI side-panel toggles) and `EditorWorkspaceClient` wrapper managing full-viewport grids, left `ProjectSidebar` active highlighting, right AI Chat sidebar transitions, and floating project action modals. Created dynamic Server Component route `/editor/[roomId]/page.tsx` and custom `AccessDenied` view for unauthorized access or non-existent rooms. Next.js build and TypeScript validation checked successfully.
 - Project Share Dialog (09-share-dialog.md) completed: Implemented a robust `/api/projects/[projectId]/collaborators` REST endpoint supporting GET (listing with Clerk batch data enrichment), POST (invitation by email with self-invite/duplicate safety validation), and DELETE (removal by ID or email). Enforced project ownership checking on invite and delete requests server-side. Created a beautiful, fully functional `<ShareDialog />` modal that allows owners to manage access, displays read-only collaborator directories to guests, and implements link copying with immediate checkout confirmation. Updated `WorkspaceNavbar`, `EditorWorkspaceClient`, and `/editor/[roomId]/page.tsx` routes. Project build checks compiled completely clean.
-
-
-
+- Liveblocks Real-time Setup (10-liveblocks-setup.md) completed: Installed `@liveblocks/node` dependency; configured Presence and UserMeta global types in `liveblocks.config.ts`; implemented cached singleton Liveblocks server client and deterministic neon color mapping in `lib/liveblocks.ts`; created route handler `POST /api/liveblocks-auth` validating Clerk sessions, project DB access, and provisioning rooms before generating access tokens. Next.js static build checks and ESLint checks compiled clean.
+- Implement base collaborative canvas (11-base-canvas.md) completed: Created shared canvas types in `types/canvas.ts`. Implemented `CanvasErrorFallback` for Liveblocks connection issues. Created client-side wrapper `CanvasWrapper` initializing the Liveblocks room with provider components, suspense loader fallback, and error boundaries. Designed and configured `CollaborativeCanvas` using `@xyflow/react` and `useLiveblocksFlow` starting with empty lists, loose connection mode, fitView enabled, dots background, custom dark-skinned MiniMap, and Cursors support. Integrated canvas into `EditorWorkspaceClient` main viewport grid. Verification builds compile successfully.
+- Create shape panel (12-shape-panel.md) completed: Designed a custom `"canvas"` node renderer (`CanvasNode`) to support placeholder shape styling. Wrapped the collaborative canvas in `ReactFlowProvider` inside the `CanvasWrapper`. Implemented a floating pill-shaped toolbar for shapes at the bottom-center of the canvas. Added drag-and-drop mechanics to insert new nodes into the synced React Flow state backed by `@liveblocks/react-flow` with correct coordinates, default sizes, empty labels, and unique timestamp-counter IDs. Resolved layout height-collapsing issues by restoring `<main>`'s flexbox column styling and enforcing explicit viewport-percentage height constraints (`h-[calc(100vh-3.5rem)]`) on wrapper elements. Verification builds compile successfully.
