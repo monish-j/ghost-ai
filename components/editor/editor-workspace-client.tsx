@@ -15,8 +15,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, Sparkles, Terminal, X } from "lucide-react";
+import { Bot, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CanvasWrapper } from "@/components/editor/canvas-wrapper";
 
 interface EditorWorkspaceClientProps {
   currentProject: { id: string; name: string; isOwner: boolean };
@@ -77,43 +78,12 @@ export function EditorWorkspaceClient({
       <div className="flex-1 flex relative overflow-hidden h-[calc(100vh-3.5rem)]">
         <main
           className={cn(
-            "flex-1 relative bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:24px_24px] bg-zinc-950 flex flex-col items-center justify-center p-6 text-center select-none overflow-hidden transition-all duration-300 ease-in-out",
+            "flex-1 flex flex-col relative bg-zinc-950 overflow-hidden transition-all duration-300 ease-in-out h-full",
             sidebarOpen ? "md:pl-80" : "pl-0",
             aiSidebarOpen ? "md:pr-96" : "pr-0"
           )}
         >
-          {/* Ambient light glow */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/5 blur-[150px] rounded-full pointer-events-none" />
-
-          {/* Central Canvas Placeholder content */}
-          <div className="relative z-10 max-w-md flex flex-col gap-6 items-center">
-            <div className="p-4 bg-zinc-900/80 rounded-full border border-zinc-800 text-purple-400 mb-2 shadow-[0_0_40px_rgba(168,85,247,0.1)]">
-              <Terminal className="size-8" />
-            </div>
-
-            <div className="space-y-2">
-              <h1 className="text-xl font-bold tracking-tight text-zinc-200">
-                Workspace Canvas
-              </h1>
-              <p className="text-sm text-zinc-500 max-w-sm">
-                This is a placeholder for the interactive architecture editor. Real-time multi-player and canvas drawing tools are coming soon.
-              </p>
-            </div>
-            
-            <div className="px-3 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900/40 text-xs font-mono text-zinc-400">
-              Project ID: {currentProject.id}
-            </div>
-          </div>
-
-          {/* Bottom decorative details */}
-          <div className="absolute bottom-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-md border border-zinc-800 bg-zinc-900/60 text-[11px] text-zinc-500 font-mono">
-            <span className="size-2 rounded-full bg-purple-500 animate-pulse" />
-            WORKSPACE_ACTIVE
-          </div>
-
-          <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-md border border-zinc-800 bg-zinc-900/60 text-[11px] text-zinc-500 font-mono">
-            Mode: Preview
-          </div>
+          <CanvasWrapper roomId={currentProject.id} />
         </main>
 
         {/* 4. AI Chat Sidebar Placeholder */}
