@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PanelLeftOpen, PanelLeftClose, Sparkles, Share2, Bot } from "lucide-react";
+import { PanelLeftOpen, PanelLeftClose, Sparkles, Share2, Bot, LayoutTemplate } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
@@ -13,6 +13,7 @@ interface WorkspaceNavbarProps {
   aiSidebarOpen: boolean;
   onToggleAiSidebar: () => void;
   onOpenShare: () => void;
+  onOpenTemplates: () => void;
 }
 
 export function WorkspaceNavbar({
@@ -22,6 +23,7 @@ export function WorkspaceNavbar({
   aiSidebarOpen,
   onToggleAiSidebar,
   onOpenShare,
+  onOpenTemplates,
 }: WorkspaceNavbarProps) {
   return (
     <header className="fixed top-0 left-0 right-0 h-14 z-50 flex items-center justify-between px-4 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800/80 select-none">
@@ -65,6 +67,17 @@ export function WorkspaceNavbar({
 
       {/* Right Section: Actions + User Profile */}
       <div className="w-1/3 flex justify-end items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onOpenTemplates}
+          className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors gap-1.5 px-2.5 h-8 text-xs cursor-pointer"
+          title="Starter Templates"
+        >
+          <LayoutTemplate className="size-3.5 text-purple-400" />
+          <span className="hidden md:inline">Templates</span>
+        </Button>
+
         <Button
           variant="ghost"
           size="sm"

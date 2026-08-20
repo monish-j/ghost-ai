@@ -9,6 +9,8 @@ import { CanvasErrorFallback } from "./canvas-error-fallback";
 
 interface CanvasWrapperProps {
   roomId: string;
+  templatesOpen: boolean;
+  setTemplatesOpen: (open: boolean) => void;
 }
 
 function CanvasLoading() {
@@ -30,7 +32,11 @@ function CanvasLoading() {
   );
 }
 
-export function CanvasWrapper({ roomId }: CanvasWrapperProps) {
+export function CanvasWrapper({
+  roomId,
+  templatesOpen,
+  setTemplatesOpen,
+}: CanvasWrapperProps) {
   return (
     <ErrorBoundary
       FallbackComponent={CanvasErrorFallback}
@@ -49,7 +55,10 @@ export function CanvasWrapper({ roomId }: CanvasWrapperProps) {
         >
           <ClientSideSuspense fallback={<CanvasLoading />}>
             <ReactFlowProvider>
-              <CollaborativeCanvas />
+              <CollaborativeCanvas
+                templatesOpen={templatesOpen}
+                setTemplatesOpen={setTemplatesOpen}
+              />
             </ReactFlowProvider>
           </ClientSideSuspense>
         </RoomProvider>

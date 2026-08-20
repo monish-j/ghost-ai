@@ -5,11 +5,11 @@ change.
 
 ## Current Phase
 
-- Phase 7 Complete
+- Phase 18 Complete
 
 ## Current Goal
 
-- Ready for subsequent phases (workspace shell, canvas tools, layout editing, and features).
+- Ready for subsequent collaborative features (presence, avatars, comments).
 
 ## Completed
 
@@ -25,6 +25,12 @@ change.
 - Set up Liveblocks real-time infrastructure (10-liveblocks-setup.md)
 - Implement base collaborative canvas (11-base-canvas.md)
 - Create shape panel (12-shape-panel.md)
+- Node shape rendering (13-node-shape.md)
+- Resizing and inline label editing for canvas nodes (14-node-editing.md)
+- Node color toolbar (15-node-color-toolbar.md)
+- Edge behavior (16-edge-behavior.md)
+- Canvas ergonomics (17-canvas-ergonomics.md)
+- Starter templates (18-starter-templates.md)
 
 ## In Progress
 
@@ -32,7 +38,7 @@ change.
 
 ## Next Up
 
-- Node shape rendering (13-node-shape.md)
+- Presence and collaboration polish.
 
 ## Open Questions
 
@@ -49,6 +55,8 @@ change.
 - Integrated `@clerk/nextjs/server` `createClerkClient` in Route Handlers to dynamically retrieve collaborator avatars and full display names via parallelized, batch-filtering searches on user emails.
 - Configured Liveblocks server client with a fallback mock secret during module evaluation to prevent static analysis crashes in Next.js build tasks.
 - Adopted Liveblocks Access Tokens (prepared server-side via `liveblocks.prepareSession`) dynamically validated against database ownership and collaborator memberships, utilizing PostgreSQL as the access authority and avoiding permission syncing overhead.
+- Devised a Lightweight Diagram Preview Renderer that calculates bounding boxes of template nodes and draws simplified SVG shape nodes and linear edges scaled/centered inside a fixed 3:2 viewport, completely avoiding loading a heavy React Flow instance for static previews.
+- Structured the collaborative template import using Liveblocks `useMutation` to atomically clear and replace the entire room's nodes and edges maps inside a single transaction, preventing inconsistent state broadcasts and race conditions.
 
 ## Session Notes
 
@@ -65,3 +73,10 @@ change.
 - Liveblocks Real-time Setup (10-liveblocks-setup.md) completed: Installed `@liveblocks/node` dependency; configured Presence and UserMeta global types in `liveblocks.config.ts`; implemented cached singleton Liveblocks server client and deterministic neon color mapping in `lib/liveblocks.ts`; created route handler `POST /api/liveblocks-auth` validating Clerk sessions, project DB access, and provisioning rooms before generating access tokens. Next.js static build checks and ESLint checks compiled clean.
 - Implement base collaborative canvas (11-base-canvas.md) completed: Created shared canvas types in `types/canvas.ts`. Implemented `CanvasErrorFallback` for Liveblocks connection issues. Created client-side wrapper `CanvasWrapper` initializing the Liveblocks room with provider components, suspense loader fallback, and error boundaries. Designed and configured `CollaborativeCanvas` using `@xyflow/react` and `useLiveblocksFlow` starting with empty lists, loose connection mode, fitView enabled, dots background, custom dark-skinned MiniMap, and Cursors support. Integrated canvas into `EditorWorkspaceClient` main viewport grid. Verification builds compile successfully.
 - Create shape panel (12-shape-panel.md) completed: Designed a custom `"canvas"` node renderer (`CanvasNode`) to support placeholder shape styling. Wrapped the collaborative canvas in `ReactFlowProvider` inside the `CanvasWrapper`. Implemented a floating pill-shaped toolbar for shapes at the bottom-center of the canvas. Added drag-and-drop mechanics to insert new nodes into the synced React Flow state backed by `@liveblocks/react-flow` with correct coordinates, default sizes, empty labels, and unique timestamp-counter IDs. Resolved layout height-collapsing issues by restoring `<main>`'s flexbox column styling and enforcing explicit viewport-percentage height constraints (`h-[calc(100vh-3.5rem)]`) on wrapper elements. Verification builds compile successfully.
+- Node shape rendering (13-node-shape.md) completed: Extracted and designed a unified, reusable `ShapeRenderer` component rendering clean CSS styling for rectangle, pill, and circle, and scalable SVGs with non-scaling-strokes for diamond, hexagon, and cylinder. Integrated `ShapeRenderer` inside `CanvasNode` while keeping React Flow connection handles overlaid on top. Implemented a cursor-following ghost shape preview in `CollaborativeCanvas` using fixed layout coordinates updated via the workspace `onDragOver` listener, hidden the default browser drag image using a transparent 1x1 GIF in `onDragStart`, and cleaned up the dragging state on drop and drag end (supporting Esc/cancellations). Checked that production build compiled clean.
+- Resizing and inline label editing for canvas nodes (14-node-editing.md) completed: Created shared `CanvasContext` to handle programmatic `onNodesChange` mutations without circular references. Implemented standard `<NodeResizer />` styled to match the dark technical palette. Implemented `updateNodeStyle` Liveblocks mutation to ensure nested `style` properties are reconciled in storage during dimension updates. Created an overlay editor utilizing an auto-resizing `<textarea>` with `nodrag nopan` styling to block canvas and node drag/pan interactions. Handled escape, blur, and enter actions to dismiss edit mode. Production build checks passed completely clean.
+- Node Color Toolbar (15-node-color-toolbar.md) completed: Added 7 beautiful predefined color preset themes to types/canvas.ts. Updated ShapeRenderer to dynamically render background, border, text color, and matching SVG selected glow filters. Built floating color toolbar above selected canvas nodes that propagates state changes in real-time via collaborative node replace mutations. Prevented dragging/panning behaviors on toolbar hover and click events. Confirmed that Next.js production build succeeds cleanly.
+- Edge Behavior (16-edge-behavior.md) completed: Configured all-side source/target Handles on CanvasNode with subtle styling and transition hover fade-in; implemented custom CanvasEdge using getSmoothStepPath with borderRadius: 0 for clean right-angle routing, layered with an invisible 15px interaction zone for hover/click ease, custom dynamically-colored arrowhead SVG markers, and inline double-click label editing containing an auto-growing input with event isolation to prevent canvas drag/pan. Verified production builds succeed clean.
+- Canvas Ergonomics (17-canvas-ergonomics.md) completed: Created floating pill-shaped control bar at bottom-left, layered above the MiniMap. Configured React Flow zoom and fitView options with smooth animations and wired Undo/Redo commands using Liveblocks history. Developed global custom hook `hooks/useKeyboardShortcuts.ts` to register canvas key shortcuts (+, =, -, Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z, Cmd/Ctrl+Y) while ignoring text area/editable focus targets. Verified all builds compile successfully.
+- Starter Templates (18-starter-templates.md) completed: Defined 3 default templates (Microservices Architecture, CI/CD Deployment Pipeline, and Event-Driven System) inside `components/editor/starter-templates.ts` using shared canvas types. Implemented `<StarterTemplatesModal />` featuring a custom `<TemplatePreview />` SVG renderer which calculates diagram bounds and draws shapes and edges dynamically inside a 3:2 card viewport without instantiating React Flow. Added a "Templates" nav action button in `WorkspaceNavbar` and wired modal state through `EditorWorkspaceClient` and `CanvasWrapper` to `CollaborativeCanvas`. Created a custom transaction mutation using `useMutation` to clear the active canvas and insert new template nodes and edges atomically, then animating `fitView` once rendered. Compilation builds succeed cleanly. Removed the MiniMap from the bottom-left of the canvas and positioned the zoom/history control bar at the bottom-left corner (`bottom-6 left-6`) to achieve a cleaner, less cluttered technical workspace UI.
+

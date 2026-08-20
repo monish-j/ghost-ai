@@ -4,21 +4,46 @@ import * as React from "react";
 import {
   ReactFlow,
   Background,
-  MiniMap,
   ConnectionMode,
   BackgroundVariant,
   useReactFlow,
+  NodeChange,
 } from "@xyflow/react";
 import { useLiveblocksFlow, Cursors } from "@liveblocks/react-flow";
-import { Square, Diamond, Circle, Pill, Cylinder, Hexagon } from "lucide-react";
+import { useMutation, useUndo, useRedo, useCanUndo, useCanRedo } from "@liveblocks/react";
+import {
+  Square,
+  Diamond,
+  Circle,
+  Pill,
+  Cylinder,
+  Hexagon,
+  ZoomIn,
+  ZoomOut,
+  Maximize,
+  Undo2,
+  Redo2,
+} from "lucide-react";
 import { CanvasNode } from "./canvas-node";
+import { CanvasEdge } from "./canvas-edge";
 import { canvasNode, canvasEdge } from "@/types/canvas";
+import { ShapeRenderer } from "./shape-renderer";
+import { CanvasContext } from "./canvas-context";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+
+import { LiveObject } from "@liveblocks/client";
+import { StarterTemplatesModal } from "./starter-templates-modal";
+import { CanvasTemplate } from "./starter-templates";
 
 import "@xyflow/react/dist/style.css";
 import "@liveblocks/react-flow/styles.css";
 
 const nodeTypes = {
   canvas: CanvasNode,
+};
+
+const edgeTypes = {
+  canvasEdge: CanvasEdge,
 };
 
 const SHAPES = [
@@ -30,7 +55,15 @@ const SHAPES = [
   { type: "hexagon", label: "Hexagon", icon: Hexagon, width: 100, height: 90 },
 ];
 
-export function CollaborativeCanvas() {
+interface CollaborativeCanvasProps {
+  templatesOpen: boolean;
+  setTemplatesOpen: (open: boolean) => void;
+}
+
+export function CollaborativeCanvas({
+  templatesOpen,
+  setTemplatesOpen,
+}: CollaborativeCanvasProps) {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete } =
     useLiveblocksFlow<canvasNode, canvasEdge>({
       suspense: true,
@@ -42,17 +75,143 @@ export function CollaborativeCanvas() {
       },
     });
 
-  const { screenToFlowPosition } = useReactFlow();
+  // Mutation to update the nested style.width and style.height in Liveblocks storage
+  const updateNodeStyle = useMutation(
+    ({ storage }, nodeId: string, width: number, height: number) => {
+      const flow = (storage as any).get("flow") as any;
+      if (!flow) return;
+      const nodesMap = flow.get("nodes");
+      const node = nodesMap?.get(nodeId);
+      if (node) {
+        const style = node.get("style");
+        if (style) {
+          style.set("width", width);
+          style.set("height", height);
+        }
+      }
+    },
+    []
+  );
+
+  // Custom onNodesChange handler that intercepts dimensions changes to sync node styles
+  const handleNodesChange = React.useCallback(
+    (changes: NodeChange<canvasNode>[]) => {
+      onNodesChange(changes);
+      for (const change of changes) {
+        if (change.type === "dimensions" && change.dimensions) {
+          updateNodeStyle(change.id, change.dimensions.width, change.dimensions.height);
+        }
+      }
+    },
+    [onNodesChange, updateNodeStyle]
+  );
+
+  const reactFlowInstance = useReactFlow();
+  const { screenToFlowPosition, zoomIn, zoomOut, fitView } = reactFlowInstance;
+
+  const undo = useUndo();
+  const redo = useRedo();
+  const canUndo = useCanUndo();
+  const canRedo = useCanRedo();
+
+  useKeyboardShortcuts({
+    reactFlowInstance,
+    undo,
+    redo,
+  });
+
   const idCounter = React.useRef(0);
+
+  // Mutation to clear the canvas and replace with template nodes/edges in a single transaction
+  const importTemplate = useMutation(
+    ({ storage }, template: CanvasTemplate) => {
+      const flow = (storage as any).get("flow") as any;
+      if (!flow) return;
+
+      const nodesMap = flow.get("nodes");
+      const edgesMap = flow.get("edges");
+
+      if (nodesMap) {
+        Array.from(nodesMap.keys()).forEach((key) => nodesMap.delete(key));
+        template.nodes.forEach((node) => {
+          nodesMap.set(
+            node.id,
+            new LiveObject({
+              id: node.id,
+              type: node.type,
+              position: node.position,
+              width: node.width,
+              height: node.height,
+              style: new LiveObject((node.style || {}) as any),
+              data: new LiveObject(node.data as any),
+              selected: false,
+              dragging: false,
+              measured: false,
+              resizing: false,
+            })
+          );
+        });
+      }
+
+      if (edgesMap) {
+        Array.from(edgesMap.keys()).forEach((key) => edgesMap.delete(key));
+        template.edges.forEach((edge) => {
+          edgesMap.set(
+            edge.id,
+            new LiveObject({
+              id: edge.id,
+              source: edge.source,
+              target: edge.target,
+              type: edge.type,
+              selected: false,
+            })
+          );
+        });
+      }
+    },
+    []
+  );
+
+  const handleImportTemplate = React.useCallback(
+    (template: CanvasTemplate) => {
+      importTemplate(template);
+      setTemplatesOpen(false);
+      // Wait for layout updates, then fit view
+      setTimeout(() => {
+        fitView({ duration: 300 });
+      }, 100);
+    },
+    [importTemplate, setTemplatesOpen, fitView]
+  );
+
+  // Track shape drag state for ghost preview
+  const [draggedShape, setDraggedShape] = React.useState<{
+    type: string;
+    width: number;
+    height: number;
+    x: number;
+    y: number;
+  } | null>(null);
 
   const onDragOver = React.useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
+
+    // Continuously update client coordinates of the cursor during drag
+    setDraggedShape((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        x: event.clientX,
+        y: event.clientY,
+      };
+    });
   }, []);
 
   const onDrop = React.useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
+      setDraggedShape(null); // Clear preview state on drop
 
       const rawData = event.dataTransfer.getData("application/reactflow");
       if (!rawData) return;
@@ -97,36 +256,104 @@ export function CollaborativeCanvas() {
   );
 
   return (
-    <div
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      className="w-full h-[calc(100vh-3.5rem)] relative bg-zinc-950"
-    >
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onDelete={onDelete}
-        nodeTypes={nodeTypes}
-        fitView
-        connectionMode={ConnectionMode.Loose}
+    <CanvasContext.Provider value={{ onNodesChange: handleNodesChange, onEdgesChange }}>
+      <div
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        className="w-full h-[calc(100vh-3.5rem)] relative bg-zinc-950"
       >
-        <Background
-          variant={BackgroundVariant.Dots}
-          color="#27272a"
-          gap={24}
-          size={1.5}
-        />
-        <MiniMap
-          position="bottom-left"
-          className="!bg-zinc-900/90 !border-zinc-800/80 !rounded-lg !shadow-xl"
-          maskColor="rgba(168, 85, 247, 0.08)"
-          nodeColor="#3f3f46"
-        />
-        <Cursors />
-      </ReactFlow>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onDelete={onDelete}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          defaultEdgeOptions={{
+            type: "canvasEdge",
+          }}
+          fitView
+          connectionMode={ConnectionMode.Loose}
+        >
+          <Background
+            variant={BackgroundVariant.Dots}
+            color="#27272a"
+            gap={24}
+            size={1.5}
+          />
+          <Cursors />
+        </ReactFlow>
+
+      {/* Floating control bar for zoom and undo/redo */}
+      <div className="absolute bottom-6 left-6 z-50 bg-zinc-950/85 border border-zinc-800/80 p-1.5 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.6)] flex items-center gap-1 backdrop-blur-md border-t-zinc-700/40 select-none nodrag nopan">
+        {/* Zoom Controls */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => zoomOut({ duration: 200 })}
+            className="group relative p-2 bg-zinc-900/60 hover:bg-purple-600/20 border border-zinc-800/80 hover:border-purple-500/50 rounded-full text-zinc-400 hover:text-purple-300 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95"
+            aria-label="Zoom Out"
+          >
+            <ZoomOut className="size-4" />
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-zinc-800/80 text-[10px] font-semibold text-zinc-200 rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+              Zoom Out (-)
+            </div>
+          </button>
+
+          <button
+            onClick={() => fitView({ duration: 200 })}
+            className="group relative p-2 bg-zinc-900/60 hover:bg-purple-600/20 border border-zinc-800/80 hover:border-purple-500/50 rounded-full text-zinc-400 hover:text-purple-300 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95"
+            aria-label="Fit View"
+          >
+            <Maximize className="size-4" />
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-zinc-800/80 text-[10px] font-semibold text-zinc-200 rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+              Fit View
+            </div>
+          </button>
+
+          <button
+            onClick={() => zoomIn({ duration: 200 })}
+            className="group relative p-2 bg-zinc-900/60 hover:bg-purple-600/20 border border-zinc-800/80 hover:border-purple-500/50 rounded-full text-zinc-400 hover:text-purple-300 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95"
+            aria-label="Zoom In"
+          >
+            <ZoomIn className="size-4" />
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-zinc-800/80 text-[10px] font-semibold text-zinc-200 rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+              Zoom In (+)
+            </div>
+          </button>
+        </div>
+
+        {/* Thin Divider */}
+        <div className="w-px h-5 bg-zinc-800 mx-1" />
+
+        {/* History Controls */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => undo()}
+            disabled={!canUndo}
+            className="group relative p-2 bg-zinc-900/60 hover:bg-purple-600/20 border border-zinc-800 hover:border-purple-500/50 rounded-full text-zinc-400 hover:text-purple-300 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-30 disabled:pointer-events-none disabled:hover:bg-zinc-900/60 disabled:hover:border-zinc-800/80 disabled:hover:text-zinc-400"
+            aria-label="Undo"
+          >
+            <Undo2 className="size-4" />
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-zinc-800/80 text-[10px] font-semibold text-zinc-200 rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+              Undo (Ctrl+Z)
+            </div>
+          </button>
+
+          <button
+            onClick={() => redo()}
+            disabled={!canRedo}
+            className="group relative p-2 bg-zinc-900/60 hover:bg-purple-600/20 border border-zinc-800/80 hover:border-purple-500/50 rounded-full text-zinc-400 hover:text-purple-300 transition-all duration-200 cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-30 disabled:pointer-events-none disabled:hover:bg-zinc-900/60 disabled:hover:border-zinc-800/80 disabled:hover:text-zinc-400"
+            aria-label="Redo"
+          >
+            <Redo2 className="size-4" />
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-zinc-900 border border-zinc-800/80 text-[10px] font-semibold text-zinc-200 rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+              Redo (Ctrl+Y / Shift+Z)
+            </div>
+          </button>
+        </div>
+      </div>
 
       {/* Floating pill-shaped toolbar for drawing shapes */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 bg-zinc-950/85 border border-zinc-800/80 px-4 py-2.5 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.6)] flex items-center gap-3 backdrop-blur-md border-t-zinc-700/40">
@@ -149,6 +376,24 @@ export function CollaborativeCanvas() {
                   })
                 );
                 e.dataTransfer.effectAllowed = "move";
+
+                // Create transparent drag image to hide the browser's default drag preview
+                const img = new Image();
+                img.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+                e.dataTransfer.setDragImage(img, 0, 0);
+
+                // Set initial preview state at current mouse cursor
+                setDraggedShape({
+                  type: shape.type,
+                  width: shape.width,
+                  height: shape.height,
+                  x: e.clientX,
+                  y: e.clientY,
+                });
+              }}
+              onDragEnd={() => {
+                // Ensure drag preview is hidden if drag is cancelled
+                setDraggedShape(null);
               }}
               className="group relative p-2 bg-zinc-900/60 hover:bg-purple-600/20 border border-zinc-800 hover:border-purple-500/50 rounded-lg text-zinc-400 hover:text-purple-300 transition-all duration-200 cursor-grab active:cursor-grabbing hover:scale-105 active:scale-95"
             >
@@ -161,6 +406,36 @@ export function CollaborativeCanvas() {
           );
         })}
       </div>
+
+      {/* Ghost Drag Preview attached to cursor */}
+      {draggedShape && (
+        <div
+          style={{
+            position: "fixed",
+            left: draggedShape.x,
+            top: draggedShape.y,
+            width: draggedShape.width,
+            height: draggedShape.height,
+            pointerEvents: "none",
+            zIndex: 9999,
+          }}
+          className="opacity-50 pointer-events-none"
+        >
+          <ShapeRenderer
+            shape={draggedShape.type}
+            selected={true} // Render highlighted (purple outline/glow) for drag preview
+            showLabel={false} // Label is not needed in the drag preview
+          />
+        </div>
+      )}
+
+      {/* Starter Templates Modal */}
+      <StarterTemplatesModal
+        open={templatesOpen}
+        onOpenChange={setTemplatesOpen}
+        onImport={handleImportTemplate}
+      />
     </div>
+    </CanvasContext.Provider>
   );
 }
