@@ -11,6 +11,9 @@ interface CanvasWrapperProps {
   roomId: string;
   templatesOpen: boolean;
   setTemplatesOpen: (open: boolean) => void;
+  canvasJsonPath: string | null;
+  onSaveStatusChange: (status: "idle" | "saving" | "saved" | "error") => void;
+  registerManualSave: (saveFn: () => Promise<void>) => void;
 }
 
 function CanvasLoading() {
@@ -36,6 +39,9 @@ export function CanvasWrapper({
   roomId,
   templatesOpen,
   setTemplatesOpen,
+  canvasJsonPath,
+  onSaveStatusChange,
+  registerManualSave,
 }: CanvasWrapperProps) {
   return (
     <ErrorBoundary
@@ -50,14 +56,19 @@ export function CanvasWrapper({
           id={roomId}
           initialPresence={{
             cursor: null,
+            thinking: false,
             isThinking: false,
           }}
         >
           <ClientSideSuspense fallback={<CanvasLoading />}>
             <ReactFlowProvider>
               <CollaborativeCanvas
+                projectId={roomId}
+                canvasJsonPath={canvasJsonPath}
                 templatesOpen={templatesOpen}
                 setTemplatesOpen={setTemplatesOpen}
+                onSaveStatusChange={onSaveStatusChange}
+                registerManualSave={registerManualSave}
               />
             </ReactFlowProvider>
           </ClientSideSuspense>

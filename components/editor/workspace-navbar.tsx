@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PanelLeftOpen, PanelLeftClose, Sparkles, Share2, Bot, LayoutTemplate } from "lucide-react";
-import { UserButton } from "@clerk/nextjs";
+import { PanelLeftOpen, PanelLeftClose, Sparkles, Share2, Bot, LayoutTemplate, Cloud, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 interface WorkspaceNavbarProps {
   projectName: string;
@@ -14,6 +14,8 @@ interface WorkspaceNavbarProps {
   onToggleAiSidebar: () => void;
   onOpenShare: () => void;
   onOpenTemplates: () => void;
+  saveStatus?: "idle" | "saving" | "saved" | "error";
+  onManualSave?: () => void;
 }
 
 export function WorkspaceNavbar({
@@ -24,6 +26,8 @@ export function WorkspaceNavbar({
   onToggleAiSidebar,
   onOpenShare,
   onOpenTemplates,
+  saveStatus,
+  onManualSave,
 }: WorkspaceNavbarProps) {
   return (
     <header className="fixed top-0 left-0 right-0 h-14 z-50 flex items-center justify-between px-4 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800/80 select-none">
@@ -67,6 +71,38 @@ export function WorkspaceNavbar({
 
       {/* Right Section: Actions + User Profile */}
       <div className="w-1/3 flex justify-end items-center gap-2">
+        {saveStatus && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onManualSave}
+            disabled={saveStatus === "saving"}
+            className={cn(
+              "transition-all duration-200 gap-1.5 px-2.5 h-8 text-xs cursor-pointer select-none border border-transparent",
+              saveStatus === "saved" && "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 hover:border-emerald-500/20",
+              saveStatus === "saving" && "text-zinc-400 bg-zinc-900/40",
+              saveStatus === "error" && "text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 hover:border-rose-500/20 border-rose-500/30"
+            )}
+            title={
+              saveStatus === "saved"
+                ? "All changes saved to cloud. Click to force save."
+                : saveStatus === "saving"
+                ? "Saving changes..."
+                : "Failed to save changes. Click to retry."
+            }
+          >
+            {saveStatus === "saving" && <Loader2 className="size-3.5 animate-spin" />}
+            {saveStatus === "saved" && <Cloud className="size-3.5" />}
+            {saveStatus === "error" && <AlertCircle className="size-3.5" />}
+            
+            <span className="hidden md:inline">
+              {saveStatus === "saved" && "Saved"}
+              {saveStatus === "saving" && "Saving..."}
+              {saveStatus === "error" && "Error - Retry?"}
+            </span>
+          </Button>
+        )}
+
         <Button
           variant="ghost"
           size="sm"
@@ -101,10 +137,6 @@ export function WorkspaceNavbar({
         >
           <Bot className="size-4.5" />
         </Button>
-
-        <div className="border-l border-zinc-800 h-4 mx-1" />
-
-        <UserButton />
       </div>
     </header>
   );
