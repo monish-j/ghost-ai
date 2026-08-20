@@ -51,6 +51,7 @@ export default async function WorkspacePage({ params }: PageProps) {
         id: project.id,
         name: project.name,
         isOwner: project.ownerId === userId,
+        canvasJsonPath: project.canvasJsonPath,
       }}
       initialMyProjects={mappedMyProjects}
       initialSharedProjects={mappedSharedProjects}

@@ -5,11 +5,11 @@ change.
 
 ## Current Phase
 
-- Phase 18 Complete
+- Phase 21 Complete
 
 ## Current Goal
 
-- Ready for subsequent collaborative features (presence, avatars, comments).
+- Ready for AI integrations and backend agent hookups.
 
 ## Completed
 
@@ -31,6 +31,9 @@ change.
 - Edge behavior (16-edge-behavior.md)
 - Canvas ergonomics (17-canvas-ergonomics.md)
 - Starter templates (18-starter-templates.md)
+- Presence, avatars, and live cursors (19-presence-avatars-cursors.md)
+- AI Workspace Sidebar Shell (20-ai-sidebar-shell.md)
+- Collaborative canvas autosave and database restoration (21-canvas-autosave.md)
 
 ## In Progress
 
@@ -38,7 +41,7 @@ change.
 
 ## Next Up
 
-- Presence and collaboration polish.
+- Design agent API (22-design-agent-api.md)
 
 ## Open Questions
 
@@ -57,6 +60,11 @@ change.
 - Adopted Liveblocks Access Tokens (prepared server-side via `liveblocks.prepareSession`) dynamically validated against database ownership and collaborator memberships, utilizing PostgreSQL as the access authority and avoiding permission syncing overhead.
 - Devised a Lightweight Diagram Preview Renderer that calculates bounding boxes of template nodes and draws simplified SVG shape nodes and linear edges scaled/centered inside a fixed 3:2 viewport, completely avoiding loading a heavy React Flow instance for static previews.
 - Structured the collaborative template import using Liveblocks `useMutation` to atomically clear and replace the entire room's nodes and edges maps inside a single transaction, preventing inconsistent state broadcasts and race conditions.
+- Consolidated client-side presence and user profiles by rendering the collaborator avatar stack and current Clerk `UserButton` within a unified glassmorphic canvas overlay, preventing navbar layout pollution and avoiding profile button duplication.
+- Enabled viewport-aware collaborator cursor overlays by transforming client coordinates to canvas flow coordinates via `screenToFlowPosition` on mouse move, preserving exact spatial pointer registration across zoom and pan actions.
+- Adopted Vercel Blob for persisting raw canvas JSON to keep Prisma schema lightweight and focused only on project metadata.
+- Designed a debounced state machine in `useAutosave` hook that baseline-initializes the saved state on first load and safely delays updates to prevent database write floods during drag gestures.
+- Implemented a three-tiered layout restoring sequence that skips fetching and loading if the Liveblocks room has active elements, protecting concurrent editor states from being overwritten by refreshes.
 
 ## Session Notes
 
@@ -77,6 +85,9 @@ change.
 - Resizing and inline label editing for canvas nodes (14-node-editing.md) completed: Created shared `CanvasContext` to handle programmatic `onNodesChange` mutations without circular references. Implemented standard `<NodeResizer />` styled to match the dark technical palette. Implemented `updateNodeStyle` Liveblocks mutation to ensure nested `style` properties are reconciled in storage during dimension updates. Created an overlay editor utilizing an auto-resizing `<textarea>` with `nodrag nopan` styling to block canvas and node drag/pan interactions. Handled escape, blur, and enter actions to dismiss edit mode. Production build checks passed completely clean.
 - Node Color Toolbar (15-node-color-toolbar.md) completed: Added 7 beautiful predefined color preset themes to types/canvas.ts. Updated ShapeRenderer to dynamically render background, border, text color, and matching SVG selected glow filters. Built floating color toolbar above selected canvas nodes that propagates state changes in real-time via collaborative node replace mutations. Prevented dragging/panning behaviors on toolbar hover and click events. Confirmed that Next.js production build succeeds cleanly.
 - Edge Behavior (16-edge-behavior.md) completed: Configured all-side source/target Handles on CanvasNode with subtle styling and transition hover fade-in; implemented custom CanvasEdge using getSmoothStepPath with borderRadius: 0 for clean right-angle routing, layered with an invisible 15px interaction zone for hover/click ease, custom dynamically-colored arrowhead SVG markers, and inline double-click label editing containing an auto-growing input with event isolation to prevent canvas drag/pan. Verified production builds succeed clean.
-- Canvas Ergonomics (17-canvas-ergonomics.md) completed: Created floating pill-shaped control bar at bottom-left, layered above the MiniMap. Configured React Flow zoom and fitView options with smooth animations and wired Undo/Redo commands using Liveblocks history. Developed global custom hook `hooks/useKeyboardShortcuts.ts` to register canvas key shortcuts (+, =, -, Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z, Cmd/Ctrl+Y) while ignoring text area/editable focus targets. Verified all builds compile successfully.
+- Canvas Ergonomics (17-canvas-ergonomics.md) completed: Created floating pill-shaped control bar at bottom-left, layered above the MiniMap. Configured React Flow zoom and fitView options with smooth animations and wired Undo/Redo commands using Liveblocks history. Developed global custom hook `hooks/useKeyboardShortcuts.ts` to register canvas key shortcuts (+, =, -, Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z, Cmd/Ctrl+Y) while ignoring text area/editable focus targets. Configured React Flow deletion key bindings to support both Backspace and Delete keys for selected element removal. Verified all builds compile successfully.
 - Starter Templates (18-starter-templates.md) completed: Defined 3 default templates (Microservices Architecture, CI/CD Deployment Pipeline, and Event-Driven System) inside `components/editor/starter-templates.ts` using shared canvas types. Implemented `<StarterTemplatesModal />` featuring a custom `<TemplatePreview />` SVG renderer which calculates diagram bounds and draws shapes and edges dynamically inside a 3:2 card viewport without instantiating React Flow. Added a "Templates" nav action button in `WorkspaceNavbar` and wired modal state through `EditorWorkspaceClient` and `CanvasWrapper` to `CollaborativeCanvas`. Created a custom transaction mutation using `useMutation` to clear the active canvas and insert new template nodes and edges atomically, then animating `fitView` once rendered. Compilation builds succeed cleanly. Removed the MiniMap from the bottom-left of the canvas and positioned the zoom/history control bar at the bottom-left corner (`bottom-6 left-6`) to achieve a cleaner, less cluttered technical workspace UI.
+- Presence, avatars, and live cursors (19-presence-avatars-cursors.md) completed: Expanded Liveblocks presence schema to track cursor positions and thinking states, initializing both properly upon room loading. Built `ParticipantAvatars` component containing a glassmorphic user stack with initials fallbacks, hover tooltips, deterministic presence rings, and consolidated Clerk `UserButton` layout. Removed duplicate Clerk avatar button from the navbar room header. Integrated mouse position broadcasting inside React Flow using `screenToFlowPosition` to dynamically mirror pointers to other participants with matching deterministic color badges. Verify build compiles cleanly.
+- AI Workspace Sidebar Shell (20-ai-sidebar-shell.md) completed: Created the dedicated `AiSidebar` component under `components/editor/ai-sidebar.tsx`. Configured Tailwind v4 global color variable mappings in `globals.css` alongside a scoped `.ai-sidebar-container` utility override block, resolving CSS theme conflicts gracefully. Integrated shadcn Tabs, dynamic `ScrollArea`, auto-resizing Chat Textarea with min-height 72px and max-height 160px bounds, and mock Specs generation card with download action button. Linked sidebar into the editor layout. Production build and TypeScript validation checked successfully.
+- Canvas Autosave (21-canvas-autosave.md) completed: installed `@vercel/blob`, created API endpoints `GET /api/projects/[projectId]/canvas` and `PUT /api/projects/[projectId]/canvas` using database access authorization, designed `useAutosave` custom hook to throttle writes with `2000ms` debounce, integrated database loading logic inside `CollaborativeCanvas` with a beautiful glassmorphic restore screen, and built a premium cloud save status indicator in the top workspace navbar with saved, saving, and error states. Verified static pages build and TypeScript compiler check pass successfully.
 

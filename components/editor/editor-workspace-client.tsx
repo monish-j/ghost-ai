@@ -5,6 +5,7 @@ import { ProjectSidebar } from "@/components/editor/project-sidebar";
 import { WorkspaceNavbar } from "@/components/editor/workspace-navbar";
 import { useProjectActions, Project } from "@/lib/hooks/use-project-actions";
 import { ShareDialog } from "@/components/editor/share-dialog";
+import { AiSidebar } from "@/components/editor/ai-sidebar";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { CanvasWrapper } from "@/components/editor/canvas-wrapper";
 
 interface EditorWorkspaceClientProps {
-  currentProject: { id: string; name: string; isOwner: boolean };
+  currentProject: { id: string; name: string; isOwner: boolean; canvasJsonPath: string | null };
   initialMyProjects: Project[];
   initialSharedProjects: Project[];
 }
@@ -34,6 +35,14 @@ export function EditorWorkspaceClient({
   const [aiSidebarOpen, setAiSidebarOpen] = React.useState(false);
   const [shareOpen, setShareOpen] = React.useState(false);
   const [templatesOpen, setTemplatesOpen] = React.useState(false);
+  const [saveStatus, setSaveStatus] = React.useState<"idle" | "saving" | "saved" | "error">("saved");
+  const manualSaveRef = React.useRef<(() => Promise<void>) | null>(null);
+
+  const handleManualSave = React.useCallback(async () => {
+    if (manualSaveRef.current) {
+      await manualSaveRef.current();
+    }
+  }, []);
 
   const {
     activeDialog,
@@ -62,6 +71,8 @@ export function EditorWorkspaceClient({
         onToggleAiSidebar={() => setAiSidebarOpen((prev) => !prev)}
         onOpenShare={() => setShareOpen(true)}
         onOpenTemplates={() => setTemplatesOpen(true)}
+        saveStatus={saveStatus}
+        onManualSave={handleManualSave}
       />
 
       {/* 2. Floating Project Sidebar */}
@@ -89,68 +100,16 @@ export function EditorWorkspaceClient({
             roomId={currentProject.id}
             templatesOpen={templatesOpen}
             setTemplatesOpen={setTemplatesOpen}
+            canvasJsonPath={currentProject.canvasJsonPath}
+            onSaveStatusChange={setSaveStatus}
+            registerManualSave={(fn) => {
+              manualSaveRef.current = fn;
+            }}
           />
         </main>
 
-        {/* 4. AI Chat Sidebar Placeholder */}
-        <aside
-          className={cn(
-            "fixed top-14 right-0 w-96 h-[calc(100vh-3.5rem)] z-40 border-l border-zinc-800/80",
-            "bg-zinc-950/95 backdrop-blur-md shadow-[-5px_0_25px_rgba(0,0,0,0.5)]",
-            "flex flex-col justify-between transition-transform duration-300 ease-in-out select-none",
-            aiSidebarOpen ? "translate-x-0" : "translate-x-full"
-          )}
-        >
-          {/* AI Header */}
-          <div className="flex items-center justify-between p-4 border-b border-zinc-800/60">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-purple-500/10 rounded-md border border-purple-500/20 text-purple-400">
-                <Bot className="size-4" />
-              </div>
-              <h2 className="text-sm font-semibold tracking-wide text-zinc-200">
-                AI Copilot
-              </h2>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => setAiSidebarOpen(false)}
-              className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors"
-              title="Close AI chat"
-            >
-              <X className="size-4" />
-            </Button>
-          </div>
-
-          {/* AI Content Area */}
-          <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center text-center gap-4">
-            <div className="p-3 bg-purple-500/5 rounded-full border border-purple-500/10 text-purple-400/50">
-              <Bot className="size-8" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold text-zinc-300">
-                AI Copilot coming soon
-              </p>
-              <p className="text-[11px] text-zinc-500 max-w-[200px]">
-                Your AI-powered context-aware assistant for architecture design and code generation.
-              </p>
-            </div>
-          </div>
-          
-          {/* AI Footer Chat Input Placeholder */}
-          <div className="p-4 border-t border-zinc-800/80 bg-zinc-950/60">
-            <div className="relative">
-              <Input
-                placeholder="Ask AI Copilot..."
-                disabled
-                className="bg-zinc-900/50 border-zinc-800 text-zinc-400 placeholder:text-zinc-600 pr-10 text-xs"
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600">
-                <Sparkles className="size-3.5" />
-              </div>
-            </div>
-          </div>
-        </aside>
+        {/* 4. AI Chat Sidebar */}
+        <AiSidebar isOpen={aiSidebarOpen} onClose={() => setAiSidebarOpen(false)} />
       </div>
 
       {/* Create Project Dialog */}

@@ -10,7 +10,8 @@ import {
   NodeChange,
 } from "@xyflow/react";
 import { useLiveblocksFlow, Cursors } from "@liveblocks/react-flow";
-import { useMutation, useUndo, useRedo, useCanUndo, useCanRedo } from "@liveblocks/react";
+import { useMutation, useUndo, useRedo, useCanUndo, useCanRedo, useUpdateMyPresence } from "@liveblocks/react";
+import { ParticipantAvatars } from "./participant-avatars";
 import {
   Square,
   Diamond,
@@ -30,6 +31,7 @@ import { canvasNode, canvasEdge } from "@/types/canvas";
 import { ShapeRenderer } from "./shape-renderer";
 import { CanvasContext } from "./canvas-context";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useAutosave, SaveStatus } from "@/hooks/useAutosave";
 
 import { LiveObject } from "@liveblocks/client";
 import { StarterTemplatesModal } from "./starter-templates-modal";
@@ -56,13 +58,21 @@ const SHAPES = [
 ];
 
 interface CollaborativeCanvasProps {
+  projectId: string;
+  canvasJsonPath: string | null;
   templatesOpen: boolean;
   setTemplatesOpen: (open: boolean) => void;
+  onSaveStatusChange: (status: SaveStatus) => void;
+  registerManualSave: (saveFn: () => Promise<void>) => void;
 }
 
 export function CollaborativeCanvas({
+  projectId,
+  canvasJsonPath,
   templatesOpen,
   setTemplatesOpen,
+  onSaveStatusChange,
+  registerManualSave,
 }: CollaborativeCanvasProps) {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete } =
     useLiveblocksFlow<canvasNode, canvasEdge>({
@@ -74,6 +84,9 @@ export function CollaborativeCanvas({
         initial: [],
       },
     });
+
+  const [isInitialized, setIsInitialized] = React.useState(false);
+  const [isLoadingDb, setIsLoadingDb] = React.useState(false);
 
   // Mutation to update the nested style.width and style.height in Liveblocks storage
   const updateNodeStyle = useMutation(
@@ -119,6 +132,23 @@ export function CollaborativeCanvas({
     undo,
     redo,
   });
+
+  const updateMyPresence = useUpdateMyPresence();
+
+  const handleMouseMove = React.useCallback(
+    (event: React.MouseEvent) => {
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+      updateMyPresence({ cursor: position });
+    },
+    [screenToFlowPosition, updateMyPresence]
+  );
+
+  const handleMouseLeave = React.useCallback(() => {
+    updateMyPresence({ cursor: null });
+  }, [updateMyPresence]);
 
   const idCounter = React.useRef(0);
 
@@ -171,6 +201,120 @@ export function CollaborativeCanvas({
     },
     []
   );
+
+  // Mutation to clear the canvas and restore saved canvas state in a single transaction
+  const setCanvasState = useMutation(
+    ({ storage }, loadedNodes: any[], loadedEdges: any[]) => {
+      const flow = (storage as any).get("flow") as any;
+      if (!flow) return;
+
+      const nodesMap = flow.get("nodes");
+      const edgesMap = flow.get("edges");
+
+      if (nodesMap) {
+        Array.from(nodesMap.keys()).forEach((key) => nodesMap.delete(key));
+        loadedNodes.forEach((node) => {
+          nodesMap.set(
+            node.id,
+            new LiveObject({
+              id: node.id,
+              type: node.type || "canvas",
+              position: node.position,
+              width: node.width,
+              height: node.height,
+              style: new LiveObject((node.style || {}) as any),
+              data: new LiveObject(node.data as any),
+              selected: false,
+              dragging: false,
+              measured: false,
+              resizing: false,
+            })
+          );
+        });
+      }
+
+      if (edgesMap) {
+        Array.from(edgesMap.keys()).forEach((key) => edgesMap.delete(key));
+        loadedEdges.forEach((edge) => {
+          edgesMap.set(
+            edge.id,
+            new LiveObject({
+              id: edge.id,
+              source: edge.source,
+              target: edge.target,
+              type: edge.type || "canvasEdge",
+              selected: false,
+              label: (edge as any).label || "",
+              style: new LiveObject(((edge as any).style || {}) as any),
+            })
+          );
+        });
+      }
+    },
+    []
+  );
+
+  const hasLoadedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (hasLoadedRef.current) return;
+
+    const initializeCanvas = async () => {
+      // Check if the Liveblocks room already has nodes or edges
+      if (nodes.length > 0 || edges.length > 0) {
+        setIsInitialized(true);
+        hasLoadedRef.current = true;
+        return;
+      }
+
+      // Room is empty, check if database has a saved blob path
+      if (canvasJsonPath) {
+        setIsLoadingDb(true);
+        try {
+          const res = await fetch(`/api/projects/${projectId}/canvas`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.nodes && data.edges) {
+              setCanvasState(data.nodes, data.edges);
+              // Wait briefly for mutation to apply to avoid race conditions with autosave hook
+              setTimeout(() => {
+                setIsInitialized(true);
+                setIsLoadingDb(false);
+              }, 100);
+              hasLoadedRef.current = true;
+              return;
+            }
+          }
+        } catch (error) {
+          console.error("Failed to load saved canvas state:", error);
+        }
+      }
+
+      // Fallback: no saved state or empty DB, immediately initialized
+      setIsInitialized(true);
+      setIsLoadingDb(false);
+      hasLoadedRef.current = true;
+    };
+
+    initializeCanvas();
+  }, [canvasJsonPath, projectId, nodes, edges, setCanvasState]);
+
+  const { saveStatus, saveCanvas } = useAutosave({
+    projectId,
+    nodes,
+    edges,
+    isInitialized,
+  });
+
+  // Sync save status back to parent
+  React.useEffect(() => {
+    onSaveStatusChange(saveStatus);
+  }, [saveStatus, onSaveStatusChange]);
+
+  // Sync manual save trigger to parent
+  React.useEffect(() => {
+    registerManualSave(saveCanvas);
+  }, [saveCanvas, registerManualSave]);
 
   const handleImportTemplate = React.useCallback(
     (template: CanvasTemplate) => {
@@ -255,6 +399,25 @@ export function CollaborativeCanvas({
     [screenToFlowPosition, onNodesChange]
   );
 
+  if (isLoadingDb) {
+    return (
+      <div className="w-full h-[calc(100vh-3.5rem)] relative bg-zinc-950 flex flex-col items-center justify-center gap-4 select-none">
+        <div className="relative flex items-center justify-center">
+          <div className="size-12 rounded-full border-2 border-zinc-800 border-t-purple-500 animate-spin" />
+          <div className="absolute size-8 rounded-full border border-purple-500/10 bg-purple-500/5 animate-pulse" />
+        </div>
+        <div className="space-y-1 text-center">
+          <p className="text-sm font-semibold tracking-wide text-zinc-300">
+            Restoring Saved Canvas
+          </p>
+          <p className="text-xs text-zinc-500 font-medium">
+            Fetching latest snapshot from database...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <CanvasContext.Provider value={{ onNodesChange: handleNodesChange, onEdgesChange }}>
       <div
@@ -269,6 +432,7 @@ export function CollaborativeCanvas({
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onDelete={onDelete}
+          deleteKeyCode={["Backspace", "Delete"]}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           defaultEdgeOptions={{
@@ -276,6 +440,8 @@ export function CollaborativeCanvas({
           }}
           fitView
           connectionMode={ConnectionMode.Loose}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
         >
           <Background
             variant={BackgroundVariant.Dots}
@@ -285,6 +451,11 @@ export function CollaborativeCanvas({
           />
           <Cursors />
         </ReactFlow>
+
+        {/* Top-Right Participant Avatars */}
+        <div className="absolute top-4 right-4 z-50">
+          <ParticipantAvatars />
+        </div>
 
       {/* Floating control bar for zoom and undo/redo */}
       <div className="absolute bottom-6 left-6 z-50 bg-zinc-950/85 border border-zinc-800/80 p-1.5 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.6)] flex items-center gap-1 backdrop-blur-md border-t-zinc-700/40 select-none nodrag nopan">
