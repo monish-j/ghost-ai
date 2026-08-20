@@ -33,6 +33,7 @@ export function EditorWorkspaceClient({
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const [aiSidebarOpen, setAiSidebarOpen] = React.useState(false);
   const [shareOpen, setShareOpen] = React.useState(false);
+  const [templatesOpen, setTemplatesOpen] = React.useState(false);
 
   const {
     activeDialog,
@@ -60,6 +61,7 @@ export function EditorWorkspaceClient({
         aiSidebarOpen={aiSidebarOpen}
         onToggleAiSidebar={() => setAiSidebarOpen((prev) => !prev)}
         onOpenShare={() => setShareOpen(true)}
+        onOpenTemplates={() => setTemplatesOpen(true)}
       />
 
       {/* 2. Floating Project Sidebar */}
@@ -83,7 +85,11 @@ export function EditorWorkspaceClient({
             aiSidebarOpen ? "md:pr-96" : "pr-0"
           )}
         >
-          <CanvasWrapper roomId={currentProject.id} />
+          <CanvasWrapper
+            roomId={currentProject.id}
+            templatesOpen={templatesOpen}
+            setTemplatesOpen={setTemplatesOpen}
+          />
         </main>
 
         {/* 4. AI Chat Sidebar Placeholder */}
