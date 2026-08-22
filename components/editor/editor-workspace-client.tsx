@@ -19,6 +19,9 @@ import { Input } from "@/components/ui/input";
 import { Bot, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CanvasWrapper } from "@/components/editor/canvas-wrapper";
+import { LiveblocksProvider, RoomProvider } from "@liveblocks/react";
+import { ErrorBoundary } from "react-error-boundary";
+import { CanvasErrorFallback } from "./canvas-error-fallback";
 
 interface EditorWorkspaceClientProps {
   currentProject: { id: string; name: string; isOwner: boolean; canvasJsonPath: string | null };
@@ -61,7 +64,22 @@ export function EditorWorkspaceClient({
   } = useProjectActions();
 
   return (
-    <div className="relative min-h-screen bg-black text-zinc-100 font-sans flex flex-col pt-14 overflow-hidden">
+    <ErrorBoundary
+      FallbackComponent={CanvasErrorFallback}
+      onReset={() => {
+        window.location.reload();
+      }}
+    >
+      <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
+        <RoomProvider
+          id={currentProject.id}
+          initialPresence={{
+            cursor: null,
+            thinking: false,
+            isThinking: false,
+          }}
+        >
+          <div className="relative min-h-screen bg-black text-zinc-100 font-sans flex flex-col pt-14 overflow-hidden">
       {/* 1. Workspace Navbar */}
       <WorkspaceNavbar
         projectName={currentProject.name}
@@ -257,6 +275,9 @@ export function EditorWorkspaceClient({
         projectName={currentProject.name}
         isOwner={currentProject.isOwner}
       />
-    </div>
+          </div>
+        </RoomProvider>
+      </LiveblocksProvider>
+    </ErrorBoundary>
   );
 }

@@ -10,7 +10,7 @@ import {
   NodeChange,
 } from "@xyflow/react";
 import { useLiveblocksFlow, Cursors } from "@liveblocks/react-flow";
-import { useMutation, useUndo, useRedo, useCanUndo, useCanRedo, useUpdateMyPresence } from "@liveblocks/react";
+import { useMutation, useUndo, useRedo, useCanUndo, useCanRedo, useUpdateMyPresence, useOther } from "@liveblocks/react";
 import { ParticipantAvatars } from "./participant-avatars";
 import {
   Square,
@@ -56,6 +56,56 @@ const SHAPES = [
   { type: "cylinder", label: "Cylinder", icon: Cylinder, width: 90, height: 110 },
   { type: "hexagon", label: "Hexagon", icon: Hexagon, width: 100, height: 90 },
 ];
+
+function CustomCursor({ userId, connectionId }: { userId: string; connectionId: number }) {
+  const info = useOther(connectionId, (other) => other.info);
+  const thinking = useOther(
+    connectionId,
+    (other) => other.presence?.thinking || other.presence?.isThinking
+  );
+
+  if (!info) return null;
+
+  const color = info.color || "#a855f7";
+  const name = info.name || "Collaborator";
+
+  return (
+    <div className="relative pointer-events-none select-none">
+      {/* Custom Cursor SVG */}
+      <svg
+        className="absolute top-0 left-0 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
+        width="16"
+        height="16"
+        viewBox="0 0 16 16"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M1.5 1.5V14.5L5 11L8.5 16L10.5 14.5L7 9.5L11.5 9.5L1.5 1.5Z"
+          fill={color}
+          stroke="#09090b"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+      </svg>
+
+      {/* Name Badge */}
+      <div
+        className="absolute top-4 left-4 flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold text-white shadow-md border whitespace-nowrap"
+        style={{
+          backgroundColor: color,
+          borderColor: `${color}cc`,
+          boxShadow: `0 2px 8px rgba(0,0,0,0.4), 0 0 0 1px ${color}33`,
+        }}
+      >
+        {thinking && (
+          <span className="size-2 border-[1.5px] border-white/30 border-t-white rounded-full animate-spin shrink-0" />
+        )}
+        <span>{name}</span>
+      </div>
+    </div>
+  );
+}
 
 interface CollaborativeCanvasProps {
   projectId: string;
@@ -449,7 +499,7 @@ export function CollaborativeCanvas({
             gap={24}
             size={1.5}
           />
-          <Cursors />
+          <Cursors components={{ Cursor: CustomCursor }} />
         </ReactFlow>
 
         {/* Top-Right Participant Avatars */}

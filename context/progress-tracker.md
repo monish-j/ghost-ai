@@ -5,7 +5,7 @@ change.
 
 ## Current Phase
 
-- Phase 21 Complete
+- Phase 29 Complete
 
 ## Current Goal
 
@@ -34,14 +34,24 @@ change.
 - Presence, avatars, and live cursors (19-presence-avatars-cursors.md)
 - AI Workspace Sidebar Shell (20-ai-sidebar-shell.md)
 - Collaborative canvas autosave and database restoration (21-canvas-autosave.md)
+- Trigger.dev setup (22-design-agent-api.md prerequisite)
+- Design agent API (22-design-agent-api.md)
+- Implement AI design agent logic in background task (23-design-agent-logic.md)
+- Shared AI activity indicators (24-ai-presence-state.md)
+- Collaborative sidebar chat feed (25-sidebar-chat-feed.md)
+- Wire up the AI sidebar to submit prompts, track AI runs, and reflect canvas updates via Liveblocks (26-ai-chat-functional.md)
+- Spec Generation Flow backend integration, API routes, database tracking, and Trigger.dev spec task (27-spec-generation-flow.md)
+- Persist generated specs with Vercel Blob and Prisma, and add secure download route (28-spec-persistence-download.md)
+- Specs UI Integration (29-spec-ui-integration.md)
 
 ## In Progress
 
 - None.
 
+
 ## Next Up
 
-- Design agent API (22-design-agent-api.md)
+- None.
 
 ## Open Questions
 
@@ -65,6 +75,14 @@ change.
 - Adopted Vercel Blob for persisting raw canvas JSON to keep Prisma schema lightweight and focused only on project metadata.
 - Designed a debounced state machine in `useAutosave` hook that baseline-initializes the saved state on first load and safely delays updates to prevent database write floods during drag gestures.
 - Implemented a three-tiered layout restoring sequence that skips fetching and loading if the Liveblocks room has active elements, protecting concurrent editor states from being overwritten by refreshes.
+- Devised a database-backed task run tracking system utilizing a unified `TaskRun` schema in Prisma, ensuring client-side Trigger.dev public tokens are generated securely and scoped exclusively to authorized runs that the Clerk user owns.
+- Implemented a JSON Patch builder in the background task (`trigger/design-agent.ts`) that maps structured Gemini layout actions into atomic RFC 6902 patch operations targeting collaborative `/flow/nodes` and `/flow/edges` maps, preserving diagram consistency via target validations and cascading deletions.
+- Orchestrated real-time visual progress signals by updating Liveblocks Presence and broadcasting status updates to a dedicated `ai-status-feed` feed from the background worker, including animating the AI's cursor positions across coordinates to simulate an active drawing collaboration.
+- Structured the editor workspace client to wrap the entire dashboard (navbars, canvas, and sidebars) inside a singular Liveblocks RoomProvider and ErrorBoundary, enabling the right-side AI chat panel to directly subscribe to cursor thinking statuses and validated messages in `ai-status-feed` without setting up parallel real-time channels or state syncing APIs.
+- Designed real-time collaborative chat for the editor workspace using a separate room-scoped Liveblocks feed named `ai-chat`, maintaining strict separation of concerns from the `ai-status-feed` containing status presence updates.
+- Integrated Trigger.dev `useRealtimeRun` directly in the editor sidebar UI, leveraging run-scoped public access tokens generated on-the-fly from the backend API to securely stream background execution updates without exposing sensitive credentials or polling endpoints.
+- Constructed a secure Spec Generation Flow using a dedicated `generate-spec` Trigger.dev background task powered by Google Gemini via `@ai-sdk/google`. The flow isolates client triggers via Clerk identity resolving, validates canvas structures and chat histories using Zod schemas, maps runs to database-backed `TaskRun` ownership entries, and provisions 1-hour run-scoped public access tokens for secure realtime frontend tracking.
+- Designed a secure spec download route utilizing Clerk authentication and workspace-scoped ownership checks, which streams private Vercel Blob content as a Markdown attachment while strictly preventing public access to underlying Blob URLs.
 
 ## Session Notes
 
@@ -90,4 +108,11 @@ change.
 - Presence, avatars, and live cursors (19-presence-avatars-cursors.md) completed: Expanded Liveblocks presence schema to track cursor positions and thinking states, initializing both properly upon room loading. Built `ParticipantAvatars` component containing a glassmorphic user stack with initials fallbacks, hover tooltips, deterministic presence rings, and consolidated Clerk `UserButton` layout. Removed duplicate Clerk avatar button from the navbar room header. Integrated mouse position broadcasting inside React Flow using `screenToFlowPosition` to dynamically mirror pointers to other participants with matching deterministic color badges. Verify build compiles cleanly.
 - AI Workspace Sidebar Shell (20-ai-sidebar-shell.md) completed: Created the dedicated `AiSidebar` component under `components/editor/ai-sidebar.tsx`. Configured Tailwind v4 global color variable mappings in `globals.css` alongside a scoped `.ai-sidebar-container` utility override block, resolving CSS theme conflicts gracefully. Integrated shadcn Tabs, dynamic `ScrollArea`, auto-resizing Chat Textarea with min-height 72px and max-height 160px bounds, and mock Specs generation card with download action button. Linked sidebar into the editor layout. Production build and TypeScript validation checked successfully.
 - Canvas Autosave (21-canvas-autosave.md) completed: installed `@vercel/blob`, created API endpoints `GET /api/projects/[projectId]/canvas` and `PUT /api/projects/[projectId]/canvas` using database access authorization, designed `useAutosave` custom hook to throttle writes with `2000ms` debounce, integrated database loading logic inside `CollaborativeCanvas` with a beautiful glassmorphic restore screen, and built a premium cloud save status indicator in the top workspace navbar with saved, saving, and error states. Verified static pages build and TypeScript compiler check pass successfully.
-
+- Trigger.dev setup completed: installed `@trigger.dev/sdk@4.5.10` and `@trigger.dev/build@4.5.10`, created `trigger.config.ts` configuration, defined first example task `helloWorld` under `trigger/example.ts`, updated `.gitignore` and `tsconfig.json` compiler inclusions, and registered `TRIGGER_SECRET_KEY` placeholder under `.env.local`. Verified that Next.js production build succeeds clean.
+- Completed implementation of Design Agent API (22-design-agent-api.md): defined the `TaskRun` Prisma schema, executed migrations to PostgreSQL database, registered the `design-agent` background task under `trigger/design-agent.ts`, and implemented Route Handlers at `/api/ai/design` and `/api/ai/design/token` to handle authenticated task triggering and run-scoped public access token generation. Next.js production builds compiled clean.
+- Completed implementation of AI design agent logic in background task (23-design-agent-logic.md): Integrated direct fetch completions requests using the active and available step-3.7-flash model on the user's custom paid OpenAI-compatible proxy (api.hcnsec.cn), bypassing local quota/unsupported model errors. Added robust self-healing normalizers to map LLM-generated JSON shapes, colors, and edges into Zod schemas automatically, and setup filesystem logs to capture error diagnostics.
+- Shared AI activity indicators (24-ai-presence-state.md) completed: defined Zod validation schemas for AI status feed payloads inside `types/tasks.ts`; restructured workspace client container to wrap navbar, sidebar, and canvas views in Liveblocks providers; subscribed right-side AI workspace panel to `ai-status-feed` messages and cursor presence `thinking` states; disabled inputs and send actions during active generation states; implemented CustomCursor badge renderer equipped with live micro-spinners. Verified that `npm run build` succeeds.
+- Collaborative sidebar chat feed (25-sidebar-chat-feed.md) completed: defined Zod validation schemas for chat messages in `types/tasks.ts`, and updated `components/editor/ai-sidebar.tsx` to subscribe to the room-scoped `ai-chat` feed. Replaced the local message state with Liveblocks feed messages validated via Zod, sorted chronologically. Wired the existing text area and send button using `useCreateFeedMessage` and `useSelf` to write messages with user display names. Handled error states gracefully for send failures. Verified that Next.js production builds and TypeScript validation checks succeed cleanly.
+- Wired functional AI chat and status tracking (26-ai-chat-functional.md): Integrated `@trigger.dev/react-hooks` `useRealtimeRun` in `AiSidebar` to track background design task execution states. Implemented live UI feedback including disabling input area, animating the Send button with a loading spinner, and displaying a compact status strip reflecting current task actions from `ai-status-feed`. Modified the backend design route `/api/ai/design` to generate and return a run-scoped public access token along with the triggered run ID for seamless client-side subscription. Verified build compiles and page data static rendering passes successfully.
+- Completed implementation of Spec Persistence and Download (28-spec-persistence-download.md): Created the ProjectSpec model in a modular Prisma schema, successfully migrated the PostgreSQL database schema, updated the generate-spec Trigger.dev background task to save generated specifications in Vercel Blob and log metadata to the database, and built the GET /api/projects/[projectId]/specs/[specId]/download route protecting asset delivery via Clerk and project access controls. Next.js build succeeds cleanly.
+- Completed integration of Specs UI (29-spec-ui-integration.md): Created the specifications list backend API, integrated Liveblocks room storage to stream canvas nodes and edges, wired spec triggering, token acquisition, and run execution status tracking to Trigger.dev real-time hooks, and designed a custom technical-themed Markdown preview modal equipped with direct file download capabilities. Also fixed the database client singleton (`lib/prisma.ts`) by correctly passing a `pg.Pool` instance to `PrismaPg`, and reconfigured the `generate-spec` Trigger.dev task to query the custom completions proxy with a `gemini-3.6-flash` direct fallback, resolving runtime database queries and LLM connection failures. Production build and static layout generation pass cleanly.

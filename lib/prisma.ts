@@ -1,4 +1,5 @@
 import { PrismaClient } from "../app/generated/prisma/client";
+import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { withAccelerate } from "@prisma/extension-accelerate";
 
@@ -14,9 +15,10 @@ function createPrismaClient() {
       accelerateUrl: databaseUrl,
     }).$extends(withAccelerate());
   } else {
-    const adapter = new PrismaPg({
+    const pool = new Pool({
       connectionString: databaseUrl,
     });
+    const adapter = new PrismaPg(pool);
     return new PrismaClient({ adapter });
   }
 }

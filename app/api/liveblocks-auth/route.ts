@@ -53,6 +53,25 @@ export async function POST(request: NextRequest) {
       console.error(`Error in getOrCreateRoom for room ${room}:`, error);
     }
 
+    // Ensure the required feeds exist in the room
+    try {
+      await liveblocks.createFeed({
+        roomId: room,
+        feedId: "ai-chat",
+      });
+    } catch (error) {
+      // Ignore if feed already exists
+    }
+
+    try {
+      await liveblocks.createFeed({
+        roomId: room,
+        feedId: "ai-status-feed",
+      });
+    } catch (error) {
+      // Ignore if feed already exists
+    }
+
     // 4. Return a session token with userInfo attached
     const session = liveblocks.prepareSession(userId, {
       userInfo: {
