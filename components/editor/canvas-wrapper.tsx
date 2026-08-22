@@ -1,11 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { LiveblocksProvider, RoomProvider, ClientSideSuspense } from "@liveblocks/react/suspense";
-import { ErrorBoundary } from "react-error-boundary";
+import { ClientSideSuspense } from "@liveblocks/react/suspense";
 import { ReactFlowProvider } from "@xyflow/react";
 import { CollaborativeCanvas } from "./collaborative-canvas";
-import { CanvasErrorFallback } from "./canvas-error-fallback";
 
 interface CanvasWrapperProps {
   roomId: string;
@@ -44,36 +42,17 @@ export function CanvasWrapper({
   registerManualSave,
 }: CanvasWrapperProps) {
   return (
-    <ErrorBoundary
-      FallbackComponent={CanvasErrorFallback}
-      onReset={() => {
-        // Attempt recovery by reloading the window context
-        window.location.reload();
-      }}
-    >
-      <LiveblocksProvider authEndpoint="/api/liveblocks-auth">
-        <RoomProvider
-          id={roomId}
-          initialPresence={{
-            cursor: null,
-            thinking: false,
-            isThinking: false,
-          }}
-        >
-          <ClientSideSuspense fallback={<CanvasLoading />}>
-            <ReactFlowProvider>
-              <CollaborativeCanvas
-                projectId={roomId}
-                canvasJsonPath={canvasJsonPath}
-                templatesOpen={templatesOpen}
-                setTemplatesOpen={setTemplatesOpen}
-                onSaveStatusChange={onSaveStatusChange}
-                registerManualSave={registerManualSave}
-              />
-            </ReactFlowProvider>
-          </ClientSideSuspense>
-        </RoomProvider>
-      </LiveblocksProvider>
-    </ErrorBoundary>
+    <ClientSideSuspense fallback={<CanvasLoading />}>
+      <ReactFlowProvider>
+        <CollaborativeCanvas
+          projectId={roomId}
+          canvasJsonPath={canvasJsonPath}
+          templatesOpen={templatesOpen}
+          setTemplatesOpen={setTemplatesOpen}
+          onSaveStatusChange={onSaveStatusChange}
+          registerManualSave={registerManualSave}
+        />
+      </ReactFlowProvider>
+    </ClientSideSuspense>
   );
 }

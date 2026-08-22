@@ -50,3 +50,11 @@ next-env.d.ts
 /.claude/
 /.windsurf/
 /skills-lock.json
+
+# trigger.dev
+.trigger
+
+# IDE & agent local files
+.gemini/
+.vscode/
+
